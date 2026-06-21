@@ -63,6 +63,37 @@ function getOtherPlayer(room, excludeSocketId) {
   return null;
 }
 
+function emitToOpponent(socket, eventName, payload) {
+  const ref = getRoomBySocket(socket.id);
+  if (!ref) return false;
+  const otherId = getOtherPlayer(ref.room, socket.id);
+  if (!otherId) return false;
+  io.to(otherId).emit(eventName, payload || {});
+  return true;
+}
+
+function leaveRoom(socket) {
+  const ref = getRoomBySocket(socket.id);
+  if (!ref) return;
+
+  ref.room.players.delete(socket.id);
+  socket.leave(ref.code);
+  socket.roomCode = null;
+  socket.isHost = false;
+
+  if (ref.room.players.size === 0) {
+    rooms.delete(ref.code);
+    return;
+  }
+
+  io.to(ref.code).emit("players-update", {
+    roomCode: ref.code,
+    playerCount: ref.room.players.size,
+    hostId: ref.room.hostId
+  });
+  io.to(ref.code).emit("player-left", { socketId: socket.id });
+}
+
 io.on("connection", (socket) => {
   socket.on("create-room", () => {
     const existing = getRoomBySocket(socket.id);
@@ -81,6 +112,12 @@ io.on("connection", (socket) => {
   });
 
   socket.on("join-room", (code) => {
+    const existing = getRoomBySocket(socket.id);
+    if (existing) {
+      socket.emit("room-error", { message: "Already in a room" });
+      return;
+    }
+
     const roomCode = String(code || "").trim().toUpperCase();
     const room = rooms.get(roomCode);
     if (!room) {
@@ -126,21 +163,53 @@ io.on("connection", (socket) => {
     if (otherId) io.to(otherId).emit("opponent-state", payload);
   });
 
-  socket.on("disconnect", () => {
+  socket.on("send-garbage", (payload) => {
+    const lines = Math.max(0, Math.min(4, Math.floor(Number(payload && payload.lines) || 0)));
+    if (!lines) return;
+    emitToOpponent(socket, "receive-garbage", { lines });
+  });
+
+  socket.on("player-lost", (payload) => {
+    emitToOpponent(socket, "player-won", {
+      reason: payload && payload.reason ? String(payload.reason) : "opponent-lost"
+    });
+  });
+
+  socket.on("rematch-request", () => {
+    emitToOpponent(socket, "rematch-request", {});
+  });
+
+  socket.on("rematch-accepted", () => {
     const ref = getRoomBySocket(socket.id);
-    if (ref) {
-      ref.room.players.delete(socket.id);
-      if (ref.room.players.size === 0) {
-        rooms.delete(ref.code);
-      } else {
-        io.to(ref.code).emit("players-update", {
-          roomCode: ref.code,
-          playerCount: ref.room.players.size,
-          hostId: ref.room.hostId
-        });
-        io.to(ref.code).emit("player-left", { socketId: socket.id });
-      }
+    if (!ref) return;
+    io.to(ref.code).emit("rematch-accepted", {});
+  });
+
+  socket.on("leave-room", () => {
+    leaveRoom(socket);
+  });
+
+  socket.on("cv-action", (payload) => {
+    const action = typeof payload === "string" ? payload : payload && payload.action;
+    if (!action) return;
+
+    const message = {
+      action: String(action).toUpperCase(),
+      ts: payload && payload.ts ? payload.ts : Date.now(),
+      sourceId: socket.id
+    };
+
+    if (socket.roomCode) {
+      socket.to(socket.roomCode).emit("cv-action", message);
+      socket.emit("cv-action", message);
+      return;
     }
+
+    socket.broadcast.emit("cv-action", message);
+  });
+
+  socket.on("disconnect", () => {
+    leaveRoom(socket);
   });
 });
 

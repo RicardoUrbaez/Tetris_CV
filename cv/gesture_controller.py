@@ -9,6 +9,7 @@ import cv2
 import socketio
 import time
 import numpy as np
+import os
 from collections import deque
 from typing import Optional, Tuple
 
@@ -47,6 +48,8 @@ ROTATE_HYSTERESIS_DEG = 8  # Hysteresis for rotate
 ROTATE_COOLDOWN_MS = 250  # Cooldown between rotates
 FIST_FRAMES_REQUIRED = 3  # Frames of fist detection required
 SMOOTH_ALPHA = 0.8  # EMA smoothing factor
+CAMERA_INDEXES = [0, 1, 2, 3, 4]
+CAMERA_WARMUP_FRAMES = 8
 
 # ======================
 # Socket.IO Client
@@ -157,16 +160,40 @@ except Exception as e:
 # Camera Setup
 # ======================
 def open_camera():
-    """Open camera with fallback indexes"""
-    for idx in [0, 1, 2]:
-        cap = cv2.VideoCapture(idx)
-        if cap.isOpened():
+    """Open camera with fallback indexes and Windows-friendly backends."""
+    requested_index = os.environ.get("TETRIS_CAMERA_INDEX")
+    indexes = CAMERA_INDEXES[:]
+    if requested_index is not None:
+        try:
+            preferred = int(requested_index)
+            indexes = [preferred] + [idx for idx in indexes if idx != preferred]
+        except ValueError:
+            print(f"[Camera] Ignoring invalid TETRIS_CAMERA_INDEX={requested_index!r}")
+
+    backends = [cv2.CAP_ANY]
+    if os.name == "nt":
+        backends = [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]
+
+    for backend in backends:
+        for idx in indexes:
+            cap = cv2.VideoCapture(idx, backend)
+            if not cap.isOpened():
+                cap.release()
+                continue
+
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            cap.set(cv2.CAP_PROP_FPS, 30)
+
+            for _ in range(CAMERA_WARMUP_FRAMES):
+                cap.read()
+
             ret, frame = cap.read()
-            if ret:
-                print(f"[Camera] Opened camera index {idx}")
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            if ret and frame is not None:
+                backend_name = "default" if backend == cv2.CAP_ANY else str(backend)
+                print(f"[Camera] Opened camera index {idx} with backend {backend_name}")
                 return cap
+
             cap.release()
     raise RuntimeError("Could not open any camera")
 
@@ -251,7 +278,7 @@ def detect_swipe(now_ms):
     return None
 
 def detect_rotate(landmarks, now_ms):
-    """Detect clockwise rotate gesture (fist + tilt)"""
+    """Detect clockwise/counter-clockwise rotate gesture (fist + wrist tilt)."""
     fist_now = is_fist(landmarks)
     
     if fist_now:
@@ -284,10 +311,16 @@ def detect_rotate(landmarks, now_ms):
         gesture.rotate_armed = False
         gesture.rotate_lock_until = now_ms + ROTATE_COOLDOWN_MS
         print(f"[Gesture] Rotate: delta={delta_deg:.1f}°")
-        return "ROTATE"
+        return "ROTATE_CW"
+
+    if gesture.rotate_armed and now_ms > gesture.rotate_lock_until and delta_deg < -ROTATE_THRESHOLD_DEG:
+        gesture.rotate_armed = False
+        gesture.rotate_lock_until = now_ms + ROTATE_COOLDOWN_MS
+        print(f"[Gesture] Rotate CCW: delta={delta_deg:.1f} deg")
+        return "ROTATE_CCW"
     
     # Re-arm when delta returns below hysteresis threshold
-    if delta_deg < (ROTATE_THRESHOLD_DEG - ROTATE_HYSTERESIS_DEG):
+    if abs(delta_deg) < ROTATE_HYSTERESIS_DEG:
         gesture.rotate_armed = True
     
     return None
@@ -371,7 +404,7 @@ def main():
                 
                 # Add swipe sample
                 gesture.swipe_samples.append((now_ms, gesture.sm_palm_x))
-                
+
                 # Detect swipe
                 swipe = detect_swipe(now_ms)
                 if swipe:
@@ -383,7 +416,7 @@ def main():
                     rotate = detect_rotate(landmarks, now_ms)
                     if rotate:
                         action = rotate
-                        gesture_label = f"Rotate"
+                        gesture_label = rotate.replace("_", " ").title()
                     elif gesture.fist_active:
                         gesture_label = "Fist (tilt to rotate)"
                     else:

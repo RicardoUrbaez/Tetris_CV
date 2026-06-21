@@ -1,18 +1,31 @@
 {
-    "name": "finger-gun-arena",
+    "name": "Tetris_Computer_Vision",
     "version": "1.0.0",
-    "description": "Multiplayer finger gun game using MediaPipe and Phaser 3",
+    "description": "Multiplayer Tetris with MediaPipe hand controls and Phaser 3",
     "main": "server.js",
     "scripts": {
-      "start": "node server.js"
+        "start": "node server.js",
+        "test": "npm run test:js && npm run test:py",
+        "test:js": "node --check server.js && node --check public/main.js && node --check public/gestureConfig.js && node --check public/gestureTraining.js && node --check public/gestureSamples.js && node --check public/gestureClassifier.js",
+        "test:py": "py -m py_compile cv\\train_gestures.py cv\\gesture_controller.py",
+        "remotion:studio": "remotion studio remotion/index.ts",
+        "remotion:render:intro": "remotion render remotion/index.ts MenuIntro public/assets/motion/menu-intro.mp4 --codec=h264 --overwrite",
+        "remotion:still:intro": "remotion still remotion/index.ts MenuIntro public/assets/motion/menu-intro-still.png --frame=45 --scale=0.5 --overwrite"
     },
     "dependencies": {
-      "express": "^4.18.2",
-      "socket.io": "^4.6.1",
-      "@mediapipe/hands": "^0.4.1675469240",
-      "@mediapipe/camera_utils": "^0.3.1675466862",
-      "@mediapipe/drawing_utils": "^0.3.1675466124"
+        "@mediapipe/camera_utils": "^0.3.1675466862",
+        "@mediapipe/drawing_utils": "^0.3.1675466124",
+        "@mediapipe/hands": "^0.4.1675469240",
+        "@tensorflow/tfjs": "^4.22.0",
+        "express": "^4.18.2",
+        "phaser": "^3.80.1",
+        "socket.io": "^4.6.1"
+    },
+    "devDependencies": {
+        "@remotion/cli": "^4.0.377",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "remotion": "^4.0.377"
     },
     "license": "MIT"
-  }
-  
+}

@@ -1,12 +1,14 @@
 # Tetris Hands
 
-A multiplayer Tetris game with computer vision hand controls, built with Node.js, Socket.IO, Phaser 3, and Python (OpenCV + MediaPipe).
+A multiplayer Tetris game with computer vision hand controls, built with Node.js, Socket.IO, Phaser 3, and Google MediaPipe Hands. The default CV path runs in the browser; the Python/OpenCV controller is optional for debugging or fallback.
 
 ## Features
 
 - **Single Player Mode**: Classic Tetris with keyboard or hand gesture controls
 - **Multiplayer Mode**: 2-player Tetris with garbage line attacks
-- **Computer Vision Controls**: Use hand gestures (swipe left/right, fist + tilt to rotate) via Python backend
+- **Computer Vision Controls**: Use hand gestures in the browser with MediaPipe Hands
+- **TensorFlow.js Gesture Layer**: Optional trained classifier from MediaPipe landmark features
+- **Optional Python CV Controller**: OpenCV + MediaPipe backend for a separate debug camera window
 - **Keyboard Fallback**: Always works with arrow keys, even if webcam is unavailable
 - **Neon Retro UI**: Classic Tetris-style menu and game interface
 
@@ -30,7 +32,7 @@ This installs:
 - Phaser 3 (game rendering)
 - MediaPipe Hands (browser CV, optional)
 
-### 2. Install Python Dependencies
+### 2. Install Python Dependencies (Optional)
 
 ```bash
 cd cv
@@ -74,7 +76,7 @@ The Python script will:
 - Detect hand gestures
 - Send commands to the game
 
-**Note**: You can play without the Python CV controller using keyboard controls.
+**Note**: You can play without the Python CV controller. The browser already uses MediaPipe Hands when camera permission is allowed. Do not run both browser CV and Python CV at the same time unless you are intentionally testing duplicate inputs.
 
 ### Step 3: Open in Browser
 
@@ -92,11 +94,47 @@ Open `http://localhost:3000` in your web browser.
 - **C**: Hold piece
 - **P / ESC**: Pause game
 
-### Hand Gesture Controls (Requires Python CV)
+### Hand Gesture Controls (Browser MediaPipe by Default)
 
-- **Swipe Left**: Move piece left (one column per swipe)
-- **Swipe Right**: Move piece right (one column per swipe)
-- **Fist + Tilt Clockwise**: Rotate piece clockwise
+- **Hand position left/right**: Move the piece left/right
+- **Thumb + index pinch**: Rotate piece clockwise
+- **Thumb + middle pinch**: Rotate piece counter-clockwise
+- **Flat hand wave down**: Soft drop / move down faster
+- **V sign hold**: Pause/resume
+
+Gesture thresholds live in `public/gestureConfig.js`. The app uses deterministic landmark controls first, with TensorFlow.js as an optional classifier layer when `public/gestureSamples.js` contains trained landmark samples.
+
+### Train Your Rotation Gesture
+
+To calibrate wrist rotation to your own hand movement, run this from the project root:
+
+```bash
+py cv\train_gestures.py
+```
+
+Or:
+
+```bash
+python cv/train_gestures.py
+```
+
+The trainer opens a camera window and waits for you to click **START** before each capture step. It records neutral open-hand position, then captures 600 images for thumb+index rotate clockwise, 600 images for thumb+middle rotate counter-clockwise, and 600 images for flat-hand wave-down soft drop. It writes the app-ready settings to `public/gestureTraining.js`, and the browser loads that file automatically on startup. It also writes a readable copy to `cv/gesture_training.json`.
+
+To recalibrate just one control:
+
+```bash
+py cv\train_gestures.py --mode rotation
+py cv\train_gestures.py --mode soft-drop
+```
+
+Each new training run clears old image sessions first, so the newest run is the one the app points to. The captured images are saved under `cv/training_data/session_YYYYMMDD_HHMMSS/`:
+
+- `rotate_cw/` contains 600 thumb+index pinch rotation images
+- `rotate_ccw/` contains 600 thumb+middle pinch rotation images
+- `soft_drop_wave_down/` contains 600 flat-hand downward wave images
+- `labels.csv` records each image path, measured wrist angle, and palm Y position
+
+This trains the app's gesture thresholds; it does not retrain Google's MediaPipe hand-landmark model.
 
 ## Game Modes
 
@@ -110,7 +148,7 @@ Open `http://localhost:3000` in your web browser.
 ### Multiplayer (2 Players Max)
 
 1. Click **MULTIPLAYER** from the main menu
-2. **Host**: Click **HOST GAME** to create a room (you'll get a 4-digit room code)
+2. **Host**: Click **HOST GAME** to create a room (you'll get a 6-character room code)
 3. **Joiner**: Enter the room code and click **JOIN**
 4. When 2 players are in the room, the host can click **START GAME**
 5. Each player controls their own board
@@ -146,7 +184,7 @@ Open `http://localhost:3000` in your web browser.
 
 - Ensure both players are on the same Wi-Fi network
 - Check that port 3000 is not blocked by firewall
-- Verify the room code is correct (4 digits)
+- Verify the room code is correct (6 characters)
 - Try creating a new room if connection fails
 
 ## Project Structure
@@ -157,10 +195,13 @@ finger-gun-arena/
 ├── package.json           # Node.js dependencies
 ├── public/
 │   ├── index.html        # Main HTML page
+│   ├── gestureConfig.js  # Hand-control tuning profile
+│   ├── gestureTraining.js # Generated trained hand-control profile
 │   ├── main.js           # Client-side game logic
 │   └── styles.css        # UI styling
 ├── cv/
 │   ├── gesture_controller.py  # Python CV backend
+│   ├── train_gestures.py      # Python gesture calibration trainer
 │   ├── requirements.txt      # Python dependencies
 │   └── hand_landmarker.task  # MediaPipe model (auto-downloaded)
 └── README.md             # This file
@@ -172,7 +213,8 @@ finger-gun-arena/
 
 - **Game Logic**: Edit `public/main.js` (TetrisEngine class)
 - **Server Logic**: Edit `server.js` (Socket.IO events)
-- **CV Gestures**: Edit `cv/gesture_controller.py` (gesture detection)
+- **Browser Gestures**: Edit `public/gestureConfig.js` (training/tuning) and `public/main.js` (gesture logic)
+- **Python CV Gestures**: Edit `cv/gesture_controller.py` (optional backend)
 - **UI**: Edit `public/index.html` and `public/styles.css`
 
 ### Testing

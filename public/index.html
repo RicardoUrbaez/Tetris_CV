@@ -7,9 +7,14 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="app-backdrop" aria-hidden="true">
+    <div class="grid-sheen"></div>
+    <div class="scanline"></div>
+  </div>
+
   <!-- Webcam background only when in-game; hidden on menu -->
   <div id="bgLayer" class="bg-layer hidden">
-    <video id="webcamBg" class="webcam-video-no-mirror" autoplay playsinline muted></video>
+    <video id="webcamBg" class="webcam-video-mirror" autoplay playsinline muted></video>
     <div id="bgOverlay" class="bg-overlay"></div>
   </div>
 
@@ -19,35 +24,146 @@
   <!-- Phaser game canvas -->
   <div id="gameContainer" class="game-container"></div>
 
-  <!-- ========== MENU (default on load) — pure black, no webcam ========== -->
+  <!-- ========== MENU ========== -->
   <div id="screen-menu" class="screen screen-menu">
-    <div class="menu-box">
-      <h1 class="menu-title">TETRIS HANDS</h1>
-      <p id="menuCameraBlocked" class="menu-camera-blocked hidden">Camera blocked — keyboard mode</p>
-      <button type="button" id="btnSingle" class="menu-btn">SINGLE PLAYER</button>
-      <button type="button" id="btnMulti" class="menu-btn">MULTIPLAYER</button>
-      <button type="button" id="btnHowToPlay" class="menu-btn menu-btn-secondary">HOW TO PLAY</button>
+    <div class="menu-stage">
+      <video class="menu-motion" autoplay loop muted playsinline poster="assets/motion/menu-intro-poster.svg">
+        <source src="assets/motion/menu-intro.mp4" type="video/mp4" />
+      </video>
+      <div class="menu-motion-fallback" aria-hidden="true"></div>
+
+      <div class="top-rail">
+        <span class="screen-index">01</span>
+        <span>MENU</span>
+        <div class="rail-icons" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <div class="menu-box">
+        <div class="title-lockup">
+          <h1 class="menu-title"><span>TETRIS</span><span>HANDS</span></h1>
+        </div>
+        <p id="menuCameraBlocked" class="menu-camera-blocked hidden">Keyboard mode</p>
+        <button type="button" id="btnSingle" class="menu-btn menu-btn-primary">
+          <span class="btn-icon icon-user" aria-hidden="true"></span>
+          <span>SINGLE PLAYER</span>
+        </button>
+        <button type="button" id="btnMulti" class="menu-btn menu-btn-accent">
+          <span class="btn-icon icon-team" aria-hidden="true"></span>
+          <span>MULTIPLAYER</span>
+        </button>
+        <button type="button" id="btnHowToPlay" class="menu-btn menu-btn-warning">
+          <span class="btn-icon icon-book" aria-hidden="true"></span>
+          <span>HOW TO PLAY</span>
+        </button>
+      </div>
+
+      <div class="menu-status-row">
+        <span class="status-pill status-ready">CAMERA READY</span>
+        <span class="status-pill status-muted">KEYBOARD MODE</span>
+      </div>
     </div>
   </div>
 
   <!-- ========== HOW TO PLAY overlay ========== -->
   <div id="howToPlayOverlay" class="overlay hidden">
-    <div class="overlay-box overlay-box-wide">
-      <h2>HOW TO PLAY</h2>
-      <p><strong>Keyboard:</strong> Arrow keys move/rotate/soft drop, Space = hard drop, P = pause, R = restart, Esc = exit.</p>
-      <p><strong>Hands:</strong> Position left/right = move; wrist twist = rotate CW/CCW; wave down = soft drop; open palm hold = hard drop; V sign hold = pause.</p>
-      <button type="button" id="btnHowToPlayClose" class="menu-btn">CLOSE</button>
+    <div class="overlay-box overlay-box-wide gesture-guide" role="dialog" aria-modal="true" aria-labelledby="gestureGuideTitle">
+      <div class="guide-header">
+        <div>
+          <span class="guide-kicker">Gesture Training Deck</span>
+          <h2 id="gestureGuideTitle">HOW TO PLAY</h2>
+          <p>Use your hands inside the webcam frame to steer, rotate, drop, pause, and start the game.</p>
+        </div>
+        <button type="button" id="btnHowToPlayClose" class="guide-close" aria-label="Close gesture guide">
+          <span class="btn-icon icon-close" aria-hidden="true"></span>
+        </button>
+      </div>
+
+      <div class="gesture-grid" aria-label="Hand gesture controls">
+        <article class="gesture-card">
+          <img src="assets/gestures/clap-start.png" alt="Two hands clapping together" />
+          <div>
+            <span>Start</span>
+            <h3>Clap Hands</h3>
+            <p>Clap both hands together when the board says start to begin the round.</p>
+          </div>
+        </article>
+
+        <article class="gesture-card">
+          <img src="assets/gestures/move-left-right.png" alt="Open palm with left and right arrows" />
+          <div>
+            <span>Move</span>
+            <h3>Palm Left / Right</h3>
+            <p>Move your open hand left or right in the camera frame to slide the piece.</p>
+          </div>
+        </article>
+
+        <article class="gesture-card">
+          <img src="assets/gestures/pinch-index-rotate-cw.png" alt="Thumb and index finger pinch with clockwise arrow" />
+          <div>
+            <span>Rotate CW</span>
+            <h3>Thumb + Index</h3>
+            <p>Pinch your thumb and index finger to rotate the piece clockwise.</p>
+          </div>
+        </article>
+
+        <article class="gesture-card">
+          <img src="assets/gestures/pinch-middle-rotate-ccw.png" alt="Thumb and middle finger pinch with counterclockwise arrow" />
+          <div>
+            <span>Rotate CCW</span>
+            <h3>Thumb + Middle</h3>
+            <p>Pinch your thumb and middle finger to rotate the piece counterclockwise.</p>
+          </div>
+        </article>
+
+        <article class="gesture-card">
+          <img src="assets/gestures/wave-down-soft-drop.png" alt="Flat hand waving downward" />
+          <div>
+            <span>Soft Drop</span>
+            <h3>Wave Down</h3>
+            <p>Push a flat hand downward to make the current piece fall faster.</p>
+          </div>
+        </article>
+
+        <article class="gesture-card">
+          <img src="assets/gestures/v-sign-pause.png" alt="V sign hand with pause symbol" />
+          <div>
+            <span>Pause</span>
+            <h3>Hold V Sign</h3>
+            <p>Hold a V sign for a moment to pause or resume the game.</p>
+          </div>
+        </article>
+      </div>
+
+      <div class="keyboard-guide" aria-label="Keyboard fallback controls">
+        <span>Keyboard fallback</span>
+        <kbd>&larr;</kbd><em>Move left</em>
+        <kbd>&rarr;</kbd><em>Move right</em>
+        <kbd>&uarr;</kbd><em>Rotate</em>
+        <kbd>&darr;</kbd><em>Soft drop</em>
+        <kbd>Space</kbd><em>Hard drop</em>
+        <kbd>P</kbd><em>Pause</em>
+        <kbd>R</kbd><em>Restart</em>
+        <kbd>Esc</kbd><em>Exit / close</em>
+      </div>
     </div>
   </div>
 
   <!-- ========== SINGLE PLAYER game screen ========== -->
-  <div id="screen-single" class="screen hidden">
+  <div id="screen-single" class="screen game-screen hidden">
+    <div class="screen-label"><span>02</span> SOLO PLAY</div>
+
     <div class="single-layout">
-      <div class="single-left">
+      <aside class="single-left cockpit-panel">
         <div id="hudSingle" class="hud">
           <div class="hud-row"><span>SCORE</span><b id="scoreEl">0</b></div>
           <div class="hud-row"><span>LINES</span><b id="linesEl">0</b></div>
           <div class="hud-row"><span>LEVEL</span><b id="levelEl">1</b></div>
+          <div class="keyboard-chip">
+            <span>KEYBOARD MODE</span>
+            <span class="status-dot"></span>
+          </div>
           <div class="next-label">NEXT</div>
           <canvas id="nextCanvas" class="next-canvas" width="80" height="80"></canvas>
         </div>
@@ -58,71 +174,114 @@
           <button type="button" id="btnRestart" class="hud-btn">RESTART</button>
           <button type="button" id="btnExitSingle" class="hud-btn">EXIT</button>
         </div>
+      </aside>
+
+      <div class="board-frame">
+        <div id="startOverlaySingle" class="start-overlay">
+          <span class="start-overlay-label">Clap or press START to begin</span>
+        </div>
       </div>
 
-      <div id="webcamPreviewSingle" class="webcam-preview-panel">
-        <div class="webcam-preview-label">Webcam Preview</div>
-        <video id="webcamPreview" class="webcam-video-no-mirror" autoplay playsinline muted></video>
-        <div id="webcamPanelStatus" class="webcam-panel-status hidden">Camera blocked — keyboard mode enabled</div>
-      </div>
-    </div>
-
-    <!-- Press start overlay -->
-    <div id="startOverlaySingle" class="start-overlay">
-      <span class="start-overlay-label">Press START to begin</span>
+      <aside id="webcamPreviewSingle" class="webcam-preview-panel cockpit-panel">
+        <div class="webcam-preview-label"><span class="status-dot"></span> CAMERA READY</div>
+        <div class="camera-frame">
+          <video id="webcamPreview" class="webcam-video-mirror" autoplay playsinline muted></video>
+          <div class="hand-overlay" aria-hidden="true"></div>
+        </div>
+        <p class="camera-help">Hold palm to control</p>
+        <div id="webcamPanelStatus" class="webcam-panel-status hidden">Camera blocked - keyboard mode enabled</div>
+      </aside>
     </div>
 
     <div id="cvStatusSingle" class="cv-status hidden"></div>
 
     <div id="debugHud" class="debug-hud hidden">
-      <div>rawX: <span id="dbRawX">—</span> emaX: <span id="dbEmaX">—</span> mirror: <span id="dbMirror">—</span></div>
-      <div>wristAngle: <span id="dbWristAngle">—</span> rotateTriggered: <span id="dbRotateTriggered">—</span> softDropActive: <span id="dbSoftDropActive">—</span></div>
-      <div>lastHandSeenAge: <span id="dbHandAge">—</span> zone: <span id="dbZone">—</span> fps: <span id="dbFps">—</span> <span id="dbCvStatus">—</span></div>
+      <div>rawX: <span id="dbRawX">-</span> emaX: <span id="dbEmaX">-</span> mirror: <span id="dbMirror">-</span></div>
+      <div>wristAngle: <span id="dbWristAngle">-</span> rotateTriggered: <span id="dbRotateTriggered">-</span> softDropActive: <span id="dbSoftDropActive">-</span></div>
+      <div>lastHandSeenAge: <span id="dbHandAge">-</span> zone: <span id="dbZone">-</span> fps: <span id="dbFps">-</span> <span id="dbCvStatus">-</span></div>
     </div>
   </div>
 
   <!-- ========== MULTIPLAYER LOBBY ========== -->
-  <div id="screen-multi-lobby" class="screen hidden">
-    <div class="menu-box">
-      <h2 class="menu-title-small">MULTIPLAYER</h2>
-      <p class="lobby-note">Both players must be on the same Wi-Fi network.</p>
-      <button type="button" id="btnHost" class="menu-btn">HOST GAME</button>
-      <div class="join-row">
-        <input id="roomCodeInput" type="text" placeholder="Room code" maxlength="6" />
-        <button type="button" id="btnJoin" class="menu-btn">JOIN GAME</button>
+  <div id="screen-multi-lobby" class="screen screen-lobby hidden">
+    <div class="screen-label"><span>03</span> MULTIPLAYER LOBBY</div>
+
+    <div class="lobby-shell cockpit-panel">
+      <div class="lobby-actions">
+        <h2 class="menu-title-small">MULTIPLAYER</h2>
+        <p class="lobby-note">Both players must be on the same Wi-Fi network.</p>
+        <button type="button" id="btnHost" class="menu-btn menu-btn-accent">
+          <span class="btn-icon icon-host" aria-hidden="true"></span>
+          <span>HOST GAME</span>
+        </button>
+        <div class="join-row">
+          <input id="roomCodeInput" type="text" placeholder="ROOM CODE" maxlength="6" />
+          <button type="button" id="btnJoin" class="menu-btn menu-btn-secondary">
+            <span class="btn-icon icon-enter" aria-hidden="true"></span>
+            <span>JOIN GAME</span>
+          </button>
+        </div>
+        <div id="lobbyLanUrl" class="lobby-lan hidden"></div>
+        <div id="lobbyRoomCode" class="lobby-room-code hidden"></div>
+        <button type="button" id="btnBackLobby" class="menu-btn menu-btn-quiet">
+          <span class="btn-icon icon-exit" aria-hidden="true"></span>
+          <span>BACK</span>
+        </button>
       </div>
-      <div id="lobbyStatus" class="lobby-status"></div>
-      <div id="lobbyLanUrl" class="lobby-lan hidden"></div>
-      <div id="lobbyRoomCode" class="lobby-room-code hidden"></div>
-      <button type="button" id="btnStartMulti" class="menu-btn hidden">START GAME (HOST)</button>
-      <button type="button" id="btnBackLobby" class="menu-btn menu-btn-secondary">BACK</button>
+
+      <div class="lobby-roster">
+        <div class="roster-title">
+          <span>LOBBY</span>
+          <span class="status-pill status-ready">YOU</span>
+        </div>
+        <div class="roster-list" aria-hidden="true">
+          <div><span class="status-dot"></span><strong>YOU</strong><em>Host</em></div>
+          <div><span class="pending-dot"></span><strong>Waiting for players...</strong></div>
+          <div><span class="pending-dot"></span><strong>Waiting for player...</strong></div>
+          <div><span class="pending-dot"></span><strong>Waiting for player...</strong></div>
+        </div>
+        <div id="lobbyStatus" class="lobby-status"></div>
+        <button type="button" id="btnStartMulti" class="menu-btn menu-btn-primary hidden">START GAME (HOST)</button>
+      </div>
     </div>
   </div>
 
   <!-- ========== MULTIPLAYER GAME (two boards) ========== -->
-  <div id="screen-multi-game" class="screen hidden">
+  <div id="screen-multi-game" class="screen game-screen hidden">
+    <div class="screen-label"><span>04</span> VERSUS PLAY</div>
+
     <div class="multi-layout">
-      <div class="multi-board-wrap">
+      <div class="multi-board-wrap player-wrap">
         <div class="multi-hud">
           <span>YOU</span>
-          <span id="mpScore1">0</span> / <span id="mpLines1">0</span>
+          <span><span id="mpScore1">0</span> / <span id="mpLines1">0</span></span>
         </div>
 
         <div id="webcamPreviewP1" class="webcam-preview-panel multi-preview">
-          <div class="webcam-preview-label">Your webcam</div>
-          <video id="webcamPreviewMulti" class="webcam-video-no-mirror" autoplay playsinline muted></video>
-          <div id="webcamPanelStatusMulti" class="webcam-panel-status hidden">Camera blocked — keyboard mode enabled</div>
+          <div class="webcam-preview-label"><span class="status-dot"></span> YOUR WEBCAM</div>
+          <div class="camera-frame">
+            <video id="webcamPreviewMulti" class="webcam-video-mirror" autoplay playsinline muted></video>
+            <div class="hand-overlay" aria-hidden="true"></div>
+          </div>
+          <div id="webcamPanelStatusMulti" class="webcam-panel-status hidden">Camera blocked - keyboard mode enabled</div>
         </div>
       </div>
 
-      <div class="multi-board-wrap">
+      <div class="versus-stack" aria-hidden="true">
+        <strong>VS</strong>
+        <span>LAN ROOM</span>
+        <span>2 PLAYERS</span>
+        <span>GARBAGE ON</span>
+      </div>
+
+      <div class="multi-board-wrap opponent-wrap">
         <div class="multi-hud">
           <span>OPPONENT</span>
-          <span id="mpScore2">0</span> / <span id="mpLines2">0</span>
+          <span><span id="mpScore2">0</span> / <span id="mpLines2">0</span></span>
         </div>
 
         <div id="webcamPreviewP2" class="webcam-preview-panel multi-preview">
-          <div class="webcam-preview-label">Opponent webcam not shared</div>
+          <div class="webcam-preview-label">OPPONENT CAMERA</div>
           <div class="webcam-placeholder"></div>
         </div>
       </div>
@@ -146,7 +305,10 @@
     <div class="overlay-box">
       <h2>PAUSED</h2>
       <p>Press P or click Resume</p>
-      <button type="button" id="btnResume" class="menu-btn">RESUME</button>
+      <button type="button" id="btnResume" class="menu-btn menu-btn-primary">
+        <span class="btn-icon icon-play" aria-hidden="true"></span>
+        <span>RESUME</span>
+      </button>
     </div>
   </div>
 
@@ -155,19 +317,36 @@
     <div class="overlay-box">
       <h2>GAME OVER</h2>
       <p>Press R to restart or Exit to menu</p>
-      <button type="button" id="btnRestartOverlay" class="menu-btn">RESTART</button>
-      <button type="button" id="btnExitOverlay" class="menu-btn menu-btn-secondary">EXIT</button>
+      <button type="button" id="btnRestartOverlay" class="menu-btn menu-btn-primary">RESTART</button>
+      <button type="button" id="btnExitOverlay" class="menu-btn menu-btn-quiet">EXIT</button>
+    </div>
+  </div>
+
+  <!-- Multiplayer match result overlay -->
+  <div id="matchResultOverlay" class="overlay hidden">
+    <div class="overlay-box">
+      <h2 id="matchResultTitle">MATCH COMPLETE</h2>
+      <p id="matchResultMessage"></p>
+      <div class="match-result-actions">
+        <button type="button" id="btnRematch" class="menu-btn menu-btn-primary">REMATCH</button>
+        <button type="button" id="btnExitMatch" class="menu-btn menu-btn-quiet">EXIT</button>
+      </div>
     </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+  <script src="node_modules/phaser/dist/phaser.min.js"></script>
+  <script src="node_modules/@tensorflow/tfjs/dist/tf.min.js"></script>
 
-  <!-- MediaPipe via CDN (reliable) -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <!-- MediaPipe Hands from the installed local package -->
+  <script src="/node_modules/@mediapipe/hands/hands.js"></script>
+  <script src="/node_modules/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="/node_modules/@mediapipe/drawing_utils/drawing_utils.js"></script>
 
+  <script src="gestureConfig.js"></script>
+  <script src="gestureTraining.js"></script>
+  <script src="gestureSamples.js"></script>
+  <script src="gestureClassifier.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

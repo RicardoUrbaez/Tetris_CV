@@ -1,0 +1,10 @@
+node_modules/
+.env*
+*.log
+.DS_Store
+.agents/
+.codex/
+__pycache__/
+*.pyc
+cv/training_data/
+Tetris-Computer-Vision-main/
